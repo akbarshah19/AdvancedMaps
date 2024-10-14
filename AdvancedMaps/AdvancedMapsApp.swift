@@ -11,7 +11,8 @@ import SwiftUI
 struct AdvancedMapsApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainViewControllerRepresentable()
+                .ignoresSafeArea()
         }
     }
 }
