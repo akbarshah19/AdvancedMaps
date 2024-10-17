@@ -13,6 +13,7 @@ import LBTATools
 class MainViewController: UIViewController {
     
     let mapView = MKMapView()
+    let searchTextField = UITextField(placeholder: "Search")
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,6 +25,8 @@ class MainViewController: UIViewController {
         Task {
             await performLocalSearch()
         }
+        
+        setupSearchUI()
     }
     
     fileprivate func setupRegion() {
@@ -51,8 +54,9 @@ class MainViewController: UIViewController {
     
     fileprivate func performLocalSearch() async {
         let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = "Apple"
+        request.naturalLanguageQuery = searchTextField.text
         request.region = mapView.region
+        
         let localSearch = MKLocalSearch(request: request)
         localSearch.start { response, error in
             if let error = error {
@@ -60,33 +64,10 @@ class MainViewController: UIViewController {
                 return
             }
             
+            //success
+            self.mapView.removeAnnotations(self.mapView.annotations)
             response?.mapItems.forEach({ item in
-                let placemark = item.placemark
-                var addressString = ""
-                
-                if placemark.subThoroughfare != nil {
-                    addressString += placemark.subThoroughfare! + " "
-                }
-                
-                if placemark.thoroughfare != nil {
-                    addressString += placemark.thoroughfare! + ", "
-                }
-                
-                if placemark.postalCode != nil {
-                    addressString += placemark.postalCode! + " "
-                }
-                
-                if placemark.locality != nil {
-                    addressString += placemark.locality! + ", "
-                }
-                
-                if placemark.administrativeArea != nil {
-                    addressString += placemark.administrativeArea! + " "
-                }
-                
-                if placemark.country != nil {
-                    addressString += placemark.country!
-                }
+
                 
                 let annotation = MKPointAnnotation()
                 annotation.coordinate = item.placemark.coordinate
@@ -94,6 +75,42 @@ class MainViewController: UIViewController {
                 self.mapView.addAnnotation(annotation)
             })
             self.mapView.showAnnotations(self.mapView.annotations, animated: true)
+        }
+    }
+    
+    fileprivate func setupSearchUI() {
+        let container = UIView(backgroundColor: .white)
+        container.clipsToBounds = true
+        container.layer.cornerRadius = 8
+        view.addSubview(container)
+        
+        container.anchor(top: view.safeAreaLayoutGuide.topAnchor,
+                         leading: view.leadingAnchor,
+                         bottom: nil,
+                         trailing: view.trailingAnchor,
+                         padding: .init(top: 0, left: 16, bottom: 0, right: 16)
+        )
+        
+        container.stack(searchTextField).withMargins(.allSides(16))
+        
+        //listening to searchtextfield change
+        //oldschool
+        searchTextField.addTarget(self, action: #selector(handleSearchChanges), for: .editingChanged)
+        
+        //newschool
+        NotificationCenter.default
+            .publisher(for: UITextField.textDidChangeNotification, object: searchTextField)
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { _ in
+                Task {
+                    await self.performLocalSearch()
+                }
+            }
+    }
+    
+    @objc fileprivate func handleSearchChanges() {
+        Task {
+            await performLocalSearch()
         }
     }
 }
@@ -105,6 +122,38 @@ extension MainViewController: MKMapViewDelegate {
         annotationView.canShowCallout = true
 //        annotationView.image = UIImage(systemName: "mappin.circle.fill")
         return annotationView
+    }
+}
+
+extension MKMapItem {
+    func address() -> String {
+        var addressString = ""
+        
+        if placemark.subThoroughfare != nil {
+            addressString += placemark.subThoroughfare! + " "
+        }
+        
+        if placemark.thoroughfare != nil {
+            addressString += placemark.thoroughfare! + ", "
+        }
+        
+        if placemark.postalCode != nil {
+            addressString += placemark.postalCode! + " "
+        }
+        
+        if placemark.locality != nil {
+            addressString += placemark.locality! + ", "
+        }
+        
+        if placemark.administrativeArea != nil {
+            addressString += placemark.administrativeArea! + " "
+        }
+        
+        if placemark.country != nil {
+            addressString += placemark.country!
+        }
+        
+        return addressString
     }
 }
 
