@@ -109,22 +109,13 @@ class MainViewController: UIViewController {
             }
     }
     
+    let locationsController = LocationsCarouselController(scrollDirection: .horizontal)
+    
     fileprivate func setupLocationsCarousel() {
-        let locationView = UIView(backgroundColor: .red)
+        let locationView = locationsController.view!
+        
         view.addSubview(locationView)
-        locationView.anchor(top: nil, leading: view.leadingAnchor, bottom: view.safeAreaLayoutGuide.bottomAnchor, trailing: view.trailingAnchor, padding: .init(top: 0, left: 16, bottom: 0, right: 16), size: .init(width: 0, height: 150))
-    }
-    
-    class LocationsCell: LBTAListCell<String> {
-        override func setupViews() {
-            backgroundColor = .yellow
-        }
-    }
-    
-    class LocationsCarouselController: LBTAListController<LocationsCell, String> {
-        override func viewDidLoad() {
-            super.viewDidLoad()
-        }
+        locationView.anchor(top: nil, leading: view.leadingAnchor, bottom: view.safeAreaLayoutGuide.bottomAnchor, trailing: view.trailingAnchor, size: .init(width: 0, height: 150))
     }
     
     @objc fileprivate func handleSearchChanges() {
