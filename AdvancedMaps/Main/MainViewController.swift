@@ -67,6 +67,8 @@ class MainViewController: UIViewController {
             
             //success
             self.mapView.removeAnnotations(self.mapView.annotations)
+            self.locationsController.items.removeAll()
+            
             response?.mapItems.forEach({ item in
 
                 
@@ -74,7 +76,18 @@ class MainViewController: UIViewController {
                 annotation.coordinate = item.placemark.coordinate
                 annotation.title = item.name
                 self.mapView.addAnnotation(annotation)
+                
+                self.locationsController.items.append(item)
             })
+            
+            self.locationsController.collectionView.reloadData()
+            if !self.locationsController.items.isEmpty {
+                DispatchQueue.main.async {
+                    self.locationsController.collectionView.scrollToItem(at: IndexPath(item: 0, section: 0),
+                                                                         at: .centeredHorizontally,
+                                                                         animated: true)
+                }
+            }
             self.mapView.showAnnotations(self.mapView.annotations, animated: true)
         }
     }
@@ -113,9 +126,15 @@ class MainViewController: UIViewController {
     
     fileprivate func setupLocationsCarousel() {
         let locationView = locationsController.view!
-        
+
         view.addSubview(locationView)
-        locationView.anchor(top: nil, leading: view.leadingAnchor, bottom: view.safeAreaLayoutGuide.bottomAnchor, trailing: view.trailingAnchor, size: .init(width: 0, height: 150))
+        locationView.anchor(top: nil,
+                            leading: view.leadingAnchor,
+                            bottom: view.safeAreaLayoutGuide.bottomAnchor,
+                            trailing: view.trailingAnchor,
+                            size: .init(width: 0, height: 150))
+        
+        locationsController.mainVC = self
     }
     
     @objc fileprivate func handleSearchChanges() {
