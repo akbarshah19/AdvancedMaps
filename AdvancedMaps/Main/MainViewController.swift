@@ -14,20 +14,26 @@ class MainViewController: UIViewController {
     
     let mapView = MKMapView()
     let searchTextField = UITextField(placeholder: "Search")
+    let locationManager = CLLocationManager()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        requestUserLocation()
         mapView.delegate = self
         view.addSubview(mapView)
         mapView.fillSuperview()
+        mapView.showsUserLocation = true
         setupRegion()
-//        setupMapAnnotations()
         Task {
             await performLocalSearch()
         }
-        
         setupSearchUI()
         setupLocationsCarousel()
+    }
+    
+    fileprivate func requestUserLocation() {
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.delegate = self
     }
     
     fileprivate func setupRegion() {
@@ -35,22 +41,6 @@ class MainViewController: UIViewController {
         let span = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
         let region = MKCoordinateRegion(center: coordinate, span: span)
         mapView.setRegion(region, animated: true)
-    }
-    
-    fileprivate func setupMapAnnotations() {
-        let sfAnnotation = MKPointAnnotation()
-        sfAnnotation.coordinate = CLLocationCoordinate2D(latitude: 37.7666, longitude: -122.427290)
-        sfAnnotation.title = "San Francisco"
-        sfAnnotation.subtitle = "CA"
-        mapView.addAnnotation(sfAnnotation)
-        
-        let acAnnotation = MKPointAnnotation()
-        acAnnotation.coordinate = CLLocationCoordinate2D(latitude: 37.3326, longitude: -122.030024)
-        acAnnotation.title = "Apple Campus"
-        acAnnotation.subtitle = "CA"
-        mapView.addAnnotation(acAnnotation)
-        
-        mapView.showAnnotations(self.mapView.annotations, animated: true)
     }
     
     fileprivate func performLocalSearch() async {
@@ -70,13 +60,14 @@ class MainViewController: UIViewController {
             self.locationsController.items.removeAll()
             
             response?.mapItems.forEach({ item in
-
                 
-                let annotation = MKPointAnnotation()
+                
+                let annotation = CustomMapItemAnnotation()
+                annotation.mapItem = item
                 annotation.coordinate = item.placemark.coordinate
                 annotation.title = item.name
-                self.mapView.addAnnotation(annotation)
                 
+                self.mapView.addAnnotation(annotation)
                 self.locationsController.items.append(item)
             })
             
@@ -107,11 +98,6 @@ class MainViewController: UIViewController {
         
         container.stack(searchTextField).withMargins(.allSides(16))
         
-        //listening to searchtextfield change
-        //oldschool
-        searchTextField.addTarget(self, action: #selector(handleSearchChanges), for: .editingChanged)
-        
-        //newschool
         NotificationCenter.default
             .publisher(for: UITextField.textDidChangeNotification, object: searchTextField)
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -126,7 +112,7 @@ class MainViewController: UIViewController {
     
     fileprivate func setupLocationsCarousel() {
         let locationView = locationsController.view!
-
+        
         view.addSubview(locationView)
         locationView.anchor(top: nil,
                             leading: view.leadingAnchor,
@@ -146,43 +132,38 @@ class MainViewController: UIViewController {
 
 extension MainViewController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        //MKPinAnnotationView
-        let annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "id")
-        annotationView.canShowCallout = true
-//        annotationView.image = UIImage(systemName: "mappin.circle.fill")
-        return annotationView
+        if (annotation is MKPointAnnotation) {
+            let annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "id")
+            annotationView.canShowCallout = true
+            return annotationView
+        } else {
+            return nil
+        }
+    }
+    
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        guard let customAnnotation = view.annotation as? CustomMapItemAnnotation else { return }
+        
+        guard let index = self.locationsController.items.firstIndex(where: {$0.name == view.annotation?.title}) else { return }
+        self.locationsController.collectionView.scrollToItem(at: [0, index], at: .centeredHorizontally, animated: true)
     }
 }
 
-extension MKMapItem {
-    func address() -> String {
-        var addressString = ""
-        
-        if placemark.subThoroughfare != nil {
-            addressString += placemark.subThoroughfare! + " "
+extension MainViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse:
+            print("Location authorized")
+            manager.startUpdatingLocation()
+        default:
+            print("Failed to authrize location")
         }
-        
-        if placemark.thoroughfare != nil {
-            addressString += placemark.thoroughfare! + ", "
-        }
-        
-        if placemark.postalCode != nil {
-            addressString += placemark.postalCode! + " "
-        }
-        
-        if placemark.locality != nil {
-            addressString += placemark.locality! + ", "
-        }
-        
-        if placemark.administrativeArea != nil {
-            addressString += placemark.administrativeArea! + " "
-        }
-        
-        if placemark.country != nil {
-            addressString += placemark.country!
-        }
-        
-        return addressString
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let firstLocation = locations.first else { return }
+        mapView.setRegion(.init(center: firstLocation.coordinate, span: .init(latitudeDelta: 0.1, longitudeDelta: 0.1)), animated: false)
+        locationManager.stopUpdatingLocation()
     }
 }
 
@@ -197,4 +178,8 @@ struct MainViewControllerRepresentable: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: MainViewController, context: Context) {}
+}
+
+class CustomMapItemAnnotation: MKPointAnnotation {
+    var mapItem: MKMapItem?
 }
