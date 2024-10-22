@@ -72,11 +72,26 @@ class DirectionsController: UIViewController {
         .withMargins(.init(top: 0, left: 12, bottom: 12, right: 12))
         
         startTextField.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleChangeStartLocation)))
+        
+        endTextField.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleChangeEndLocation)))
     }
     
     @objc
     fileprivate func handleChangeStartLocation() {
-        let vc = UIViewController()
+        let vc = LocationSearchController()
+        vc.selectionHandler = { [weak self] mapItem in
+            self?.startTextField.text = mapItem.name
+        }
+        vc.view.backgroundColor = .yellow
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    @objc
+    fileprivate func handleChangeEndLocation() {
+        let vc = LocationSearchController()
+        vc.selectionHandler = { [weak self] mapItem in
+            self?.endTextField.text = mapItem.name
+        }
         vc.view.backgroundColor = .yellow
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -101,7 +116,7 @@ class DirectionsController: UIViewController {
         request.source = .init(placemark: startingPlacemark)
         request.destination = .init(placemark: endingPlacemark)
 //        request.transportType = .walking
-        request.requestsAlternateRoutes = true
+//        request.requestsAlternateRoutes = true
         let directions = MKDirections(request: request)
         directions.calculate { response, error in
             if let error = error {
@@ -109,12 +124,12 @@ class DirectionsController: UIViewController {
                 return
             }
             
-            response?.routes.forEach({ route in
-                self.mapView.addOverlay(route.polyline)
-            })
+//            response?.routes.forEach({ route in
+//                self.mapView.addOverlay(route.polyline)
+//            })
              
-//            guard let route = response?.routes.first else { return }
-//            self.mapView.addOverlay(route.polyline)
+            guard let route = response?.routes.first else { return }
+            self.mapView.addOverlay(route.polyline)
         }
     }
 }
