@@ -17,6 +17,7 @@ class DirectionsController: UIViewController {
     let startTextField = IndentedTextField(placeholder: "Starting Point",
                                            padding: 12,
                                            cornerRadius: 8)
+    
     let endTextField = IndentedTextField(placeholder: "Ending Point",
                                         padding: 12,
                                         cornerRadius: 8)
@@ -115,8 +116,10 @@ class DirectionsController: UIViewController {
         let endingPlacemark = MKPlacemark(coordinate: .init(latitude: 37.331352, longitude: -122.030331))
         request.source = .init(placemark: startingPlacemark)
         request.destination = .init(placemark: endingPlacemark)
+        
 //        request.transportType = .walking
 //        request.requestsAlternateRoutes = true
+        
         let directions = MKDirections(request: request)
         directions.calculate { response, error in
             if let error = error {

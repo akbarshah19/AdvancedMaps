@@ -125,6 +125,12 @@ extension LocationSearchController: UICollectionViewDelegateFlowLayout {
 
 
 
+
+
+
+
+
+
 #Preview(body: {
     LocationSearchControllerRepresentable()
         .ignoresSafeArea()
